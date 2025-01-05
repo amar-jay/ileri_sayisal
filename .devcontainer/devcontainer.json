@@ -1,0 +1,12 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+{
+  "name": "GPU Docker Container Setup",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu", 
+  "postCreateCommand": "./docker_run.sh xilinx/vitis-ai-pytorch-gpu:latest",
+  "runArgs": [
+    "--gpus", "all"
+  ],
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ]
+}
