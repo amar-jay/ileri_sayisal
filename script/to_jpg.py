@@ -4,7 +4,6 @@ import argparse
 from PIL import Image
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
-from tqdm import tqdm
 def save_image_tensor(image_tensor, output_dir, file_prefix, slice_idx, is_mask=False):
     """Saves a single tensor slice as a JPEG image."""
     os.makedirs(output_dir, exist_ok=True)
@@ -19,19 +18,22 @@ def save_image_tensor(image_tensor, output_dir, file_prefix, slice_idx, is_mask=
     file_name = f"{file_prefix}_slice_{slice_idx:04d}{suffix}.jpeg"
     image.save(os.path.join(output_dir, file_name))
 
-def process_dataset(dataset, output_dir, count=100, save_masks=False):
+def process_dataset(dataset, output_dir, count=100, save_masks=False, unique=True):
     """Processes a PyTorch dataset and saves images and masks as JPEG slices."""
-    for i, data in tqdm(enumerate(dataset)):
+    already_saved=[]
+    for i, data in enumerate(dataset):
         if i > count:
             break
         image = data['image']
         mask = data['mask']
         image_path = data['image_path']
         slice_idx = data['slice_idx']
+
         
         # Extract the base name for the image
         file_prefix = os.path.splitext(os.path.basename(image_path))[0]
-        
+        if unique and (file_prefix in already_saved):
+            continue        
         # Save the image
         try:
             save_image_tensor(image, output_dir, file_prefix, slice_idx, is_mask=False)
@@ -41,6 +43,7 @@ def process_dataset(dataset, output_dir, count=100, save_masks=False):
         # Optionally save the mask if it exists
         if save_masks and mask.numel() > 0:
             save_image_tensor(mask, output_dir, file_prefix, slice_idx, is_mask=True)
+        already_saved.append(file_prefix)
         
     print(f"Processed all slices ({len(dataset)=}) of {image_path} successfully")
 
@@ -56,11 +59,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Convert a PyTorch dataset to JPEG slices.")
     parser.add_argument("-o", "--output_dir", default="../dataset/images", help="Path to the output directory for JPEG slices.")
     parser.add_argument("-i", "--input_dir", default="../dataset/nii", help="Path to the input directory for nii files.")
-    parser.add_argument("--save-masks", type=bool, default=True, help="Save masks as JPEG slices if available.")
+    parser.add_argument("--save-masks", action='store_true', help="Save masks as JPEG slices if available.")
     parser.add_argument("--count", type=int, default=100, help="Save masks as JPEG slices if available.")
     
     args = parser.parse_args()
     print(f"{args=}")
+    assert os.path.exists(args.input_dir)
+    os.makedirs(args.output_dir, exist_ok=True)
 
     print("might take a while...")
     dataset = LITSDataset(
@@ -68,7 +73,6 @@ if __name__ == "__main__":
         masks_dir=args.input_dir,
         slice_axis=2,
         transform=LITSImageTransform(),
-        test_size=0.005,
-        split="test")
+        split="all")
     print("fetched dataset")
     process_dataset(dataset, args.output_dir, count=args.count, save_masks=args.save_masks)
