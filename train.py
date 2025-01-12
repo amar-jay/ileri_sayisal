@@ -1,3 +1,4 @@
+import os
 import torch
 from tqdm import tqdm
 import torch.nn as nn
@@ -62,14 +63,15 @@ def get_model_small():
     return model
 
 # Model Definition
-def get_model_large(num_classes, weights_path):
+def get_model_large(num_classes, weights_path, device="cpu"):
     model = models.segmentation.deeplabv3_resnet50(weights=DeepLabV3_ResNet50_Weights.DEFAULT)
     model.classifier[4] = nn.Conv2d(256, num_classes, kernel_size=1)
+    model.to(device)
     
     # Check if weights exist locally    
     if os.path.exists(weights_path):
         print(f"Loading weights from local directory: {weights_path}")
-        model.load_state_dict(torch.load(weights_path))
+        model.load_state_dict(torch.load(weights_path, map_location=torch.device(device)))
     return model
 
 
@@ -147,7 +149,7 @@ if __name__ == "__main__":
     parser.add_argument("--build_path", type=str,default='build', help="Path where trained model is stored")
     parser.add_argument("-d", "--device", type=str,default='cpu', help="Device to train on")
     parser.add_argument('-e', '--epochs', type=int,  default=3, help='Number of training epochs. Must be an integer. Default is 3')
-    parser.add_argument("-b", '--batch_size', type=int,  default=4, help='Number of train batches. Must be an integer. Default is 3')
+    parser.add_argument("-b", '--batch_size', type=int,  default=4, help='Number of train batches. Must be an integer. Default is 4')
     parser.add_argument('-s', '--use_small', action='store_true', 
                     help='Use small model size (default: True). Pass -s to use large model.')
 
