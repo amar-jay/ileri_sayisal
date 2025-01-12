@@ -104,7 +104,7 @@ def train_model_large(model, dataset, criterion, optimizer, num_epochs=3, batch_
         model.train()
         epoch_loss = 0
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
-        for sample in tqdm(dataloader, leave=False, desc=f"Loss: {epoch_loss / len(dataloader):.4f}"):
+        for sample in tqdm(dataloader, desc=f"model large training..."):
             images = sample['image'].to(device) # Shape: [B, 1, 512, 512]
             masks = sample['mask'].to(device)   # Shape: [B, 512, 512]
             
