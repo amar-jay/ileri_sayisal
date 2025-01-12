@@ -1,0 +1,25 @@
+[UNILOG][INFO] Compile mode: dpu
+[UNILOG][INFO] Debug mode: null
+[UNILOG][INFO] Target architecture: DPUCZDX8G_ISA1_B4096
+[UNILOG][INFO] Graph name: DeepLabV3, with op num: 487
+[UNILOG][INFO] Begin to compile...
+[0;33m[UNILOG][WARNING] xir::Op{name = DeepLabV3__DeepLabV3_DeepLabHead_classifier__ASPP_0__ASPPConv_convs__ModuleList_1__Conv2d_0__ret_221, type = conv2d-fix} has been assigned to CPU: [For this conv2d op named DeepLabV3__DeepLabV3_DeepLabHead_classifier__ASPP_0__ASPPConv_convs__ModuleList_1__Conv2d_0__ret_221, DPU's bank size(262144 bytes) is not enough, the required bank size is 393216 bytes].
+[m[0;33m[UNILOG][WARNING] xir::Op{name = DeepLabV3__DeepLabV3_DeepLabHead_classifier__ASPP_0__ASPPConv_convs__ModuleList_2__Conv2d_0__ret_227, type = conv2d-fix} has been assigned to CPU: [For this conv2d op named DeepLabV3__DeepLabV3_DeepLabHead_classifier__ASPP_0__ASPPConv_convs__ModuleList_2__Conv2d_0__ret_227, DPU's bank size(262144 bytes) is not enough, the required bank size is 393216 bytes].
+[m[0;33m[UNILOG][WARNING] xir::Op{name = DeepLabV3__DeepLabV3_DeepLabHead_classifier__ASPP_0__ASPPConv_convs__ModuleList_3__Conv2d_0__ret_233, type = conv2d-fix} has been assigned to CPU: [For this conv2d op named DeepLabV3__DeepLabV3_DeepLabHead_classifier__ASPP_0__ASPPConv_convs__ModuleList_3__Conv2d_0__ret_233, DPU's bank size(262144 bytes) is not enough, the required bank size is 393216 bytes].
+[m[0;33m[UNILOG][WARNING] xir::Op{name = DeepLabV3__DeepLabV3_DeepLabHead_classifier__ASPP_0__ASPPPooling_convs__ModuleList_4__ret_245, type = upsample-fix} has been assigned to CPU: [DPU does not support BILINEAR mode. (only support NEAREST mode)].
+[m[0;33m[UNILOG][WARNING] xir::Op{name = DeepLabV3__DeepLabV3_ret_263, type = upsample-fix} has been assigned to CPU: [DPU does not support BILINEAR mode. (only support NEAREST mode)].
+[m[0;33m[UNILOG][WARNING] xir::Op{name = DeepLabV3__DeepLabV3_ret, type = upsample-fix} has been assigned to CPU: [DPU does not support BILINEAR mode. (only support NEAREST mode)].
+[m[0;33m[UNILOG][WARNING] xir::Op{name = DeepLabV3__classifier_0_convs_1_0_weight, type = const-fix} has been assigned to CPU: [Has no fanout or at least one fanout is out of DPU subgraph.].
+[m[0;33m[UNILOG][WARNING] xir::Op{name = DeepLabV3__classifier_0_convs_1_0_bias, type = const-fix} has been assigned to CPU: [Has no fanout or at least one fanout is out of DPU subgraph.].
+[m[0;33m[UNILOG][WARNING] xir::Op{name = DeepLabV3__classifier_0_convs_2_0_weight, type = const-fix} has been assigned to CPU: [Has no fanout or at least one fanout is out of DPU subgraph.].
+[m[0;33m[UNILOG][WARNING] xir::Op{name = DeepLabV3__classifier_0_convs_2_0_bias, type = const-fix} has been assigned to CPU: [Has no fanout or at least one fanout is out of DPU subgraph.].
+[m[0;33m[UNILOG][WARNING] xir::Op{name = DeepLabV3__classifier_0_convs_3_0_weight, type = const-fix} has been assigned to CPU: [Has no fanout or at least one fanout is out of DPU subgraph.].
+[m[0;33m[UNILOG][WARNING] xir::Op{name = DeepLabV3__classifier_0_convs_3_0_bias, type = const-fix} has been assigned to CPU: [Has no fanout or at least one fanout is out of DPU subgraph.].
+[m[UNILOG][INFO] Total device subgraph number 9, DPU subgraph number 2
+[UNILOG][INFO] Compile done.
+[UNILOG][INFO] The meta json is saved to "/workspace/ileri_sayisal/../build/compiled_model/meta.json"
+[UNILOG][INFO] The compiled xmodel is saved to "/workspace/ileri_sayisal/../build/compiled_model/DeepLabV3_kv260.xmodel"
+[UNILOG][INFO] The compiled xmodel's md5sum is befe32e12a3fe0227458f848d3e652db, and has been saved to "/workspace/ileri_sayisal/../build/compiled_model/md5sum.txt"
+**************************************************
+* VITIS_AI Compilation - Xilinx Inc.
+**************************************************

@@ -1,0 +1,127 @@
+vitis-ai-user@ip-10-192-11-184:/workspace/ileri_sayisal$ python -u quantize.py --model_path=../build/f_large_model.pth --quant_mode test
+No CUDA runtime is found, using CUDA_HOME='/usr/local/cuda'
+
+[VAIQ_NOTE]: Loading NNDCT kernels...
+Loading weights from local directory: ../build/f_large_model.pth
+
+[VAIQ_WARN][QUANTIZER_TORCH_CUDA_UNAVAILABLE]: CUDA (HIP) is not available, change device to CPU
+
+[VAIQ_NOTE]: OS and CPU information:
+               system --- Linux
+                 node --- ip-10-192-11-184
+              release --- 5.15.0-1072-aws
+              version --- #78~20.04.1-Ubuntu SMP Wed Oct 9 15:30:47 UTC 2024
+              machine --- x86_64
+            processor --- x86_64
+
+[VAIQ_NOTE]: Tools version information:
+                  GCC --- GCC 7.5.0
+               python --- 3.8.6
+              pytorch --- 1.13.1
+        vai_q_pytorch --- 3.5.0+60df3f1+torch1.13.1
+
+[VAIQ_WARN][QUANTIZER_TORCH_CUDA_UNAVAILABLE]: CUDA (HIP) is not available, change device to CPU.
+
+[VAIQ_NOTE]: Quant config file is empty, use default quant configuration
+
+[VAIQ_NOTE]: Quantization test process start up...
+
+[VAIQ_NOTE]: =>Quant Module is in 'cpu'.
+
+[VAIQ_NOTE]: =>Parsing DeepLabV3...
+
+[VAIQ_NOTE]: Start to trace and freeze model...
+
+[VAIQ_NOTE]: The input model nndct_st_DeepLabV3_ed is torch.nn.Module.
+
+[VAIQ_NOTE]: Finish tracing.
+
+[VAIQ_NOTE]: Processing ops...
+██████████████████████████████████████████████████| 211/211 [00:00<00:00, 3254.70it/s, OpInfo: name = return_0, type = R
+
+[VAIQ_NOTE]: =>Doing weights equalization...
+
+[VAIQ_NOTE]: =>Quantizable module is generated.(../build/quantized/DeepLabV3.py)
+
+[VAIQ_NOTE]: =>Get module with quantization.
+quantized.........
+Evaluating model...: 100%|██████████████████████████████████████████████████████████████| 62/62 [21:39<00:00, 20.96s/it]
+Quantized Model accuracy is 96.7199%
+
+[VAIQ_NOTE]: =>Converting to xmodel ...
+
+[VAIQ_WARN]: DeepLabV3::12476 is not tensor.
+
+[VAIQ_WARN]: DeepLabV3::12479 is not tensor.
+
+[VAIQ_WARN]: DeepLabV3::14143 is not tensor.
+
+[VAIQ_WARN]: DeepLabV3::14146 is not tensor.
+
+[VAIQ_ERROR][QUANTIZER_TORCH_XMODEL_BATCHSIZE]: Batch size must be 1 when exporting xmodel.
+
+[VAIQ_NOTE]: =>Successfully convert 'DeepLabV3' to xmodel.(../build/quantized/DeepLabV3_int.xmodel)
+../build/f_large_model.pth model quantized successfully in ../build/quantized
+[1]+  Done                    sudo chown -R vitis-ai-user /opt/vitis_ai/conda  (wd: /workspace)
+(wd now: /workspace/ileri_sayisal)
+vitis-ai-user@ip-10-192-11-184:/workspace/ileri_sayisal$ python -u quantize.py --model_path=../build/f_large_model.pth --quant_mode test
+No CUDA runtime is found, using CUDA_HOME='/usr/local/cuda'
+
+[VAIQ_NOTE]: Loading NNDCT kernels...
+Loading weights from local directory: ../build/f_large_model.pth
+
+[VAIQ_WARN][QUANTIZER_TORCH_CUDA_UNAVAILABLE]: CUDA (HIP) is not available, change device to CPU
+
+[VAIQ_NOTE]: OS and CPU information:
+               system --- Linux
+                 node --- ip-10-192-11-184
+              release --- 5.15.0-1072-aws
+              version --- #78~20.04.1-Ubuntu SMP Wed Oct 9 15:30:47 UTC 2024
+              machine --- x86_64
+            processor --- x86_64
+
+[VAIQ_NOTE]: Tools version information:
+                  GCC --- GCC 7.5.0
+               python --- 3.8.6
+              pytorch --- 1.13.1
+        vai_q_pytorch --- 3.5.0+60df3f1+torch1.13.1
+
+[VAIQ_WARN][QUANTIZER_TORCH_CUDA_UNAVAILABLE]: CUDA (HIP) is not available, change device to CPU.
+
+[VAIQ_NOTE]: Quant config file is empty, use default quant configuration
+
+[VAIQ_NOTE]: Quantization test process start up...
+
+[VAIQ_NOTE]: =>Quant Module is in 'cpu'.
+
+[VAIQ_NOTE]: =>Parsing DeepLabV3...
+
+[VAIQ_NOTE]: Start to trace and freeze model...
+
+[VAIQ_NOTE]: The input model nndct_st_DeepLabV3_ed is torch.nn.Module.
+
+[VAIQ_NOTE]: Finish tracing.
+
+[VAIQ_NOTE]: Processing ops...
+██████████████████████████████████████████████████| 211/211 [00:00<00:00, 3259.67it/s, OpInfo: name = return_0, type = R
+
+[VAIQ_NOTE]: =>Doing weights equalization...
+
+[VAIQ_NOTE]: =>Quantizable module is generated.(../build/quantized/DeepLabV3.py)
+
+[VAIQ_NOTE]: =>Get module with quantization.
+quantized.........
+Evaluating model...: 100%|██████████████████████████████████████████████████████████████| 23/23 [01:34<00:00,  4.12s/it]
+Quantized Model accuracy is 97.7754%
+
+[VAIQ_NOTE]: =>Converting to xmodel ...
+
+[VAIQ_WARN]: DeepLabV3::12476 is not tensor.
+
+[VAIQ_WARN]: DeepLabV3::12479 is not tensor.
+
+[VAIQ_WARN]: DeepLabV3::14143 is not tensor.
+
+[VAIQ_WARN]: DeepLabV3::14146 is not tensor.
+
+[VAIQ_NOTE]: =>Successfully convert 'DeepLabV3' to xmodel.(../build/quantized/DeepLabV3_int.xmodel)
