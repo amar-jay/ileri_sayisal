@@ -8,7 +8,18 @@ import torch.nn.functional as F
 from dataset import LITSDataset, LITSImageTransform
 from pytorch_nndct.apis import torch_quantizer, dump_xmodel
 
-def test(model, device, test_loader):
+def test(model, batchsize, device="cpu"):
+    dataset = LITSDataset(
+    images_dir="../dataset/nii",
+    masks_dir="../dataset/nii",
+    slice_axis=2,
+    transform=LITSImageTransform(),
+    test_size=0.2,
+    split="test")
+
+    test_loader = torch.utils.data.DataLoader(dataset, batch_size=batchsize, shuffle=True)
+
+    #evaluate(quantized_model, device, test_loader)
     pass
 def quantize(model, model_path, quant_model_path, quant_mode,batchsize):
   # load trained model
@@ -23,18 +34,9 @@ def quantize(model, model_path, quant_model_path, quant_mode,batchsize):
   quantized_model = quantizer.quant_model
 
 
-  dataset = LITSDataset(
-    images_dir="/content/dataset/nii",
-    masks_dir="/content/dataset/nii",
-    slice_axis=2,
-    transform=LITSImageTransform(),
-    test_size=0.2,
-    split="test")
-
-  test_loader = torch.utils.data.DataLoader(dataset, batch_size=batchsize, shuffle=True)
 
   # evaluate 
-  test(quantized_model, device, test_loader)
+  test(quantized_model, batchsize)
 
 
   # export config
@@ -48,7 +50,7 @@ def quantize(model, model_path, quant_model_path, quant_mode,batchsize):
 
 
 def run_main():
-
+    from train import get_model_small
     # construct the argument parser and parse the arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-d',  '--build_path',  type=str, default='build',    help='Path to build folder. Default is build')
@@ -58,7 +60,7 @@ def run_main():
     parser.add_argument('-s', '--use_small', type=bool,  default=True, help='the size of model, either small or large. Default is True')
     args = parser.parse_args()
 
-    model = None
+    model = get_model_small()
     model_path = os.path.join(args.build_path, 'f_small_model.pth' if args.use_small else 'f_large_model.pth') # float model path
     q_model_path = os.path.join(args.build_path, 'q_small_model.pth' if args.use_small else 'q_large_model.pth') # float model path
 

@@ -1,8 +1,9 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import nibabel as nib
 from typing import Optional, Tuple, Union
 from pathlib import Path
+import os
 
 def visualize_nii_3d(
     nii_path: Union[str, Path],
@@ -94,6 +95,7 @@ def visualize_nii(
     mask_path: Optional[Union[str, Path]] = None,
     figsize: Tuple[int, int] = (15, 5),
     cmap: str = 'gray',
+    mask_cmap: str = "jet",
     mask_alpha: float = 0.3,
     title: Optional[str] = "visualization"
 ) -> None:
@@ -133,7 +135,8 @@ def visualize_nii(
     )
     # Create the figure
     fig, axes = plt.subplots(1, 3, figsize=figsize)
-    fig.suptitle(title, fontsize=16, y=1.05)
+    if title:
+        fig.suptitle(title, fontsize=16, y=1.05)
 
     # Helper function to normalize data for visualization
     def normalize(data):
@@ -146,7 +149,7 @@ def visualize_nii(
     axes[0].imshow(np.rot90(sagittal_slice), cmap=cmap)
     if mask_data is not None:
         mask_slice = mask_data[:, :, slice_nums[0]]
-        axes[0].imshow(np.rot90(mask_slice), alpha=mask_alpha, cmap='Reds')
+        axes[0].imshow(np.rot90(mask_slice), alpha=mask_alpha, cmap=mask_cmap)
     axes[0].set_title(f'Front (slice {slice_nums[0]})')
     axes[0].axis('off')
 
@@ -155,7 +158,7 @@ def visualize_nii(
     axes[1].imshow(np.rot90(coronal_slice), cmap=cmap)
     if mask_data is not None:
         mask_slice = mask_data[:, :, slice_nums[1]]
-        axes[1].imshow(np.rot90(mask_slice), alpha=mask_alpha, cmap='Reds')
+        axes[1].imshow(np.rot90(mask_slice), alpha=mask_alpha, cmap=mask_cmap)
     axes[1].set_title(f'Mid (slice {slice_nums[1]})')
     axes[1].axis('off')
 
@@ -164,7 +167,7 @@ def visualize_nii(
     axes[2].imshow(np.rot90(axial_slice), cmap=cmap)
     if mask_data is not None:
         mask_slice = mask_data[:, :, slice_nums[2]]
-        axes[2].imshow(np.rot90(mask_slice), alpha=mask_alpha, cmap='Reds')
+        axes[2].imshow(np.rot90(mask_slice), alpha=mask_alpha, cmap=mask_cmap)
     axes[2].set_title(f'Tail (slice {slice_nums[2]})')
     axes[2].axis('off')
 
@@ -244,21 +247,39 @@ def create_slice_browser(
     plt.show()
 
 
-# Load and visualize both the image and mask NIfTI files
-image_path = "dataset/nii/volume-98.nii"
-mask_path = "dataset/nii/segmentation-98.nii"
+# Assuming you have a dataset class with the __getitem__ method as provided
+def visualize_sample(sample):
+    """
+    Visualizes an image and its corresponding mask from the dataset.
+    Args:
+        sample (object): The sample object is a sample from the dataloader has (image, mask, image_path) keys
+    """
+    image = sample['image'][0] # fetch only first batch
+    mask = sample['mask'][0]
+    mask = mask.unsqueeze(0)
+    image = np.transpose(image.numpy(), (1, 2, 0))
+    mask = np.transpose(mask.numpy(), (1, 2, 0))
 
-# Basic static visualization
-# _ = visualize_nii(
-#     nii_path=image_path,
-#     mask_path=mask_path,  # Pass the mask NIfTI file here
-#     cmap='gray',         # Color map for the main image
-#     mask_alpha=0.3       # Transparency of the mask overlay
-# )
+    # Create a figure to display the image and mask side by side
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+    axes[0].imshow(image, cmap='gray')
+    axes[0].set_title(f"Image - Slice {sample['slice_idx']}")
+    axes[0].axis('off')
 
-# # Or use the interactive slice browser
-create_slice_browser(
-    nii_path=image_path,
-    mask_path=mask_path,  # Pass the mask NIfTI file here
-    axis=2               # 0: sagittal, 1: coronal, 2: axial
-)
+
+    axes[1].imshow(image, cmap='gray', alpha=1.0) 
+    axes[1].imshow(mask, cmap='jet', alpha=0.5)  # Overlay mask with transparency
+    # axes[1].imshow(mask.numpy(), cmap='gray')
+    axes[1].set_title(f"Mask - Slice {sample['slice_idx']}")
+    
+    axes[1].axis('off')
+    plt.show()
+    return fig, axes
+
+# Visualize a few random samples from the dataset
+def visualize_from_loader(dataloader, num_samples: int = 1):
+    for i, sample in enumerate(dataloader):
+        if i > num_samples - 1:
+            return
+        visualize_sample(sample)
+

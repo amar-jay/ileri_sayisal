@@ -43,8 +43,8 @@ if __name__ == "__main__":
     # Define the source and target directories
     import argparse
     parser = argparse.ArgumentParser(description="Unzip a directory to another location.")
-    parser.add_argument("source_dir", type=str,default="dataset/zip", help="Path to the source directory.")
-    parser.add_argument("target_dir", type=str,  default="dataset/nii", help="Path to the target directory.")
+    parser.add_argument("source_dir", type=str,default="../dataset/zip", help="Path to the source directory.")
+    parser.add_argument("target_dir", type=str,  default="../dataset/nii", help="Path to the target directory.")
 
     args = parser.parse_args()
     unzip_dir(args.source_dir, args.target_dir)

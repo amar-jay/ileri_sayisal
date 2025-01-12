@@ -1,10 +1,11 @@
+import random
+from pathlib import Path
+from typing import Optional, Callable, Tuple, List
+import numpy as np
+import nibabel as nib
 import torch
 from torch.utils.data import Dataset
-import nibabel as nib
-import numpy as np
-from pathlib import Path
-import random
-from typing import Optional, Callable, Tuple, List
+import torchvision.transforms.functional as TF
 from sklearn.model_selection import train_test_split
 
 
@@ -66,8 +67,8 @@ class LITSDataset(Dataset):
             try:
                 img = nib.load(str(img_path))
                 volume = img.get_fdata()
-                _check_mask = nib.load(str(img_path).replace("volume", "segmentation"))
-                _ = _check_mask.get_fdata()
+                _mask = nib.load(str(img_path).replace("volume", "segmentation"))
+                slice_volume = _mask.get_fdata()
             except Exception as e:
                 print(f"Error in creating slices -{img_path}: {e}")
                 continue
@@ -76,15 +77,13 @@ class LITSDataset(Dataset):
 
             # For each slice, check if it contains enough information
             for slice_idx in range(n_slices):
-                slice_2d = self._get_slice(volume, slice_idx)
+                slice_2d = self._get_slice(slice_volume, slice_idx)
 
                 # Check if slice contains enough non-zero pixels
                 if self.slice_filter:
                     non_zero = np.count_nonzero(slice_2d) / slice_2d.size
                     if non_zero > self.slice_filter:
                         mapping.append((img_path, slice_idx))
-                else:
-                    mapping.append((img_path, slice_idx))
 
         return mapping
 
@@ -160,11 +159,15 @@ class LITSImageTransform:
         self,
         intensity_clip: Tuple[float, float] = (0, 99.9),# Percentile values for intensity clipping
         augmentations: Optional[Callable] = None,# Augmentation function (e.g., Albumentations or TorchVision transforms)
-        normalize: bool = True
+        normalize: bool = True,
+        rotation_range = 30,
+        noise_factor = 0.02
     ):
         self.intensity_clip = intensity_clip
         self.augmentations = augmentations
         self.normalize = normalize
+        self.rotation_range = rotation_range
+        self.noise_factor = noise_factor
 
     def clip_intensity(self, image: torch.Tensor) -> torch.Tensor:
         """Clip intensity values using the specified percentiles."""
@@ -177,6 +180,20 @@ class LITSImageTransform:
         max_val = image.max()
         return (image - min_val) / (max_val - min_val + 1e-8)
 
+    def random_rotate(self, image: torch.Tensor, mask: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Randomly rotate the image and mask."""
+        angle = random.uniform(-self.rotation_range, self.rotation_range)  # Random angle between [-rotation_range, rotation_range]
+        image_rotated = TF.rotate(image, angle)
+        mask_rotated = TF.rotate(mask, angle)
+        return image_rotated, mask_rotated
+
+    def add_noise(self, image: torch.Tensor) -> torch.Tensor:
+        """Add Gaussian noise to the image."""
+        noise = torch.randn_like(image) * self.noise_factor
+        noisy_image = image + noise
+        return torch.clip(noisy_image, 0, 1)  # Ensure values remain in the valid range [0, 1]
+
+
     def __call__(self, sample: dict) -> dict:
         image = sample['image']
         mask = sample['mask']
@@ -187,6 +204,11 @@ class LITSImageTransform:
         # Normalize Intensity
         if self.normalize:
             image = self.normalize_intensity(image)
+
+        # a bit of data transformation
+        # image = self.add_noise(image)
+        # random rotation
+        # image, mask = self.random_rotate(image, mask)
 
         # Data Augmentation
         if self.augmentations:
@@ -202,8 +224,8 @@ class LITSImageTransform:
 
 if __name__ == "__main__":
     dataset = LITSDataset(
-        images_dir="./dataset",
-        masks_dir="./dataset",
+        images_dir="../dataset/nii",
+        masks_dir="../dataset/nii",
         slice_axis=2,
         transform=LITSImageTransform(),
         test_size=0.2,
@@ -211,6 +233,9 @@ if __name__ == "__main__":
 
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
 
+    for sample in dataloader:
+        print(sample.keys())
+        break
     print("dataset testing...")
     print(f"{dataset=}")
     print("dataloader testing...")

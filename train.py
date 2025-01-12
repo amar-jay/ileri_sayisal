@@ -3,7 +3,7 @@ from tqdm import tqdm
 import torch.nn as nn
 import torchvision.models as models
 import torch.nn.functional as F
-
+from torchvision.models.segmentation import DeepLabV3_ResNet50_Weights
 
 class UNet(nn.Module):
     def __init__(self):
@@ -62,15 +62,20 @@ def get_model_small():
     return model
 
 # Model Definition
-def get_model_large(num_classes):
-    model = models.segmentation.deeplabv3_resnet50(pretrained=True)
+def get_model_large(num_classes, weights_path):
+    model = models.segmentation.deeplabv3_resnet50(weights=DeepLabV3_ResNet50_Weights.DEFAULT)
     model.classifier[4] = nn.Conv2d(256, num_classes, kernel_size=1)
+    
+    # Check if weights exist locally    
+    if os.path.exists(weights_path):
+        print(f"Loading weights from local directory: {weights_path}")
+        model.load_state_dict(torch.load(weights_path))
     return model
 
 
 def train_model_small(model, dataloader, criterion, optimizer, num_epochs=3, device="cpu"):
     model.to(device)
-    for epoch in tqdm(range(num_epochs)):
+    for epoch in range(num_epochs):
         model.train()
         epoch_loss = 0
         for sample in tqdm(dataloader, leave=False, desc=f"Loss: {epoch_loss / len(dataloader):.4f}"):
@@ -93,23 +98,34 @@ def train_model_small(model, dataloader, criterion, optimizer, num_epochs=3, dev
             return
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss / len(dataloader):.4f}")
 
-def train_model_large(model, dataloader, criterion, optimizer, num_epochs=3, device="cpu"):
+def train_model_large(model, dataset, criterion, optimizer, num_epochs=3, batch_size=4, device="cpu"):
     model.to(device)
-    for epoch in tqdm(range(num_epochs)):
+    for epoch in range(num_epochs):
         model.train()
         epoch_loss = 0
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
         for sample in tqdm(dataloader, leave=False, desc=f"Loss: {epoch_loss / len(dataloader):.4f}"):
-            images = sample['image']
-            masks = sample['mask']
-            images = images.to(device)
-            masks = masks.to(device)
+            images = sample['image'].to(device) # Shape: [B, 1, 512, 512]
+            masks = sample['mask'].to(device)   # Shape: [B, 512, 512]
             
             images = images.repeat(1, 3, 1, 1)  # Repeat channels for a 3-channel input
-
+            images_expected_shape = (batch_size, 3, 512, 512)
+            masks_expected_shape = (batch_size, 512, 512)
+            
+            # NOTE: BAD WAY OF RESOLVING THE ISSUE, FIND THE PROBLEM FIRST.
+            if images.shape != images_expected_shape or masks.shape != masks_expected_shape:
+                print(f"There is an issue to the image or mask shape {images.shape=} {masks.shape=}")
+                continue
             # Forward pass
             outputs = model(images)['out']
-            outputs = torch.argmax(outputs, dim=1, keepdim=True).squeeze(1)
+            # print(outputs.shape)
+            # print(outputs.dtype)
+            # print("-"*10)
+            # print(images.shape, masks.shape)
+            # print(images.dtype, masks.dtype, torch.unique(masks))
             loss = criterion(outputs, masks)
+            # in inference
+            #outputs = torch.argmax(outputs, dim=1, keepdim=True).squeeze(1)
 
             # Backward pass
             optimizer.zero_grad()
@@ -117,8 +133,8 @@ def train_model_large(model, dataloader, criterion, optimizer, num_epochs=3, dev
             optimizer.step()
 
             epoch_loss += loss.item()
-            return
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss / len(dataloader):.4f}")
+        print("DONE. - ", epoch)
 
 
 if __name__ == "__main__":
@@ -128,24 +144,32 @@ if __name__ == "__main__":
     import os
 
     parser = argparse.ArgumentParser(description="Download directory from google drive")
-    parser.add_argument("-b", "--build_path", type=str,default='build', help="Path where trained model is stored")
+    parser.add_argument("--build_path", type=str,default='build', help="Path where trained model is stored")
+    parser.add_argument("-d", "--device", type=str,default='cpu', help="Device to train on")
     parser.add_argument('-e', '--epochs', type=int,  default=3, help='Number of training epochs. Must be an integer. Default is 3')
-    parser.add_argument('-s', '--use_small', type=bool,  default=True, help='the size of model, either small or large. Default is True')
+    parser.add_argument("-b", '--batch_size', type=int,  default=4, help='Number of train batches. Must be an integer. Default is 3')
+    parser.add_argument('-s', '--use_small', action='store_true', 
+                    help='Use small model size (default: True). Pass -s to use large model.')
+
     args = parser.parse_args()
+    print("\n", args, "\n", "-"*8)
+
+    # weights path    
+    os.makedirs(args.build_path, exist_ok=True)
+    save_path = os.path.join(args.build_path, 'f_small_model.pth' if args.use_small else 'f_large_model.pth') # float model path
 
     dataset = LITSDataset(
-    images_dir="/content/dataset/nii",
-    masks_dir="/content/dataset/nii",
+    images_dir="../dataset/nii",
+    masks_dir="../dataset/nii",
     slice_axis=2,
     transform=LITSImageTransform(),
     test_size=0.2,
     split="train")
 
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
-
-
-    print("Testing small model")
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    print("length of dataset = ", len(dataset),  "\n", "-"*8)
     if args.use_small == True:
+        print("Testing small model")
         model = get_model_small()
         input_tensor = torch.rand(4, 1, 512, 512)
         input_tensor = input_tensor.repeat(1, 3, 1, 1)  # Repeat channels for a 3-channel input
@@ -155,7 +179,7 @@ if __name__ == "__main__":
         train_model_small(model, dataloader, nn.CrossEntropyLoss(), torch.optim.AdamW(model.parameters(), lr=0.001), num_epochs=args.epochs)
     else:
         print("Testing large model")
-        model = get_model_large(2)
+        model = get_model_large(3, save_path)
         input_tensor = torch.rand(4, 1, 512, 512)
         input_tensor = input_tensor.repeat(1, 3, 1, 1)  # Repeat channels for a 3-channel input
         output = model(input_tensor)['out']
@@ -163,13 +187,19 @@ if __name__ == "__main__":
         output = output.squeeze(1)
         print("output=", output.shape)
         print("Start training...")
-        train_model_large(model, dataloader, nn.CrossEntropyLoss(), torch.optim.AdamW(model.parameters(), lr=0.001), num_epochs=args.epochs)
+        train_model_large(
+            model=model, 
+            dataset=dataset,
+            criterion=nn.CrossEntropyLoss(), 
+            optimizer=torch.optim.AdamW(model.parameters(), lr=0.001), 
+            num_epochs=args.epochs,
+            device=args.device,
+            batch_size=args.batch_size
+            )
 
 
     # save the trained model
     print("Saving model in ", args.build_path)
-    os.makedirs(args.build_path, exist_ok=True)
-    save_path = os.path.join(args.build_path, 'f_small_model.pth' if args.use_small else 'f_large_model.pth') # float model path
     if os.path.exists(save_path):
         os.remove(save_path)
     torch.save(model.state_dict(), save_path) 
