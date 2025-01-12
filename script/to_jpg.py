@@ -52,6 +52,7 @@ if __name__ == "__main__":
     if project_dir not in sys.path:
         sys.path.insert(0, project_dir)
 
+    from dataset import LITSDataset, LITSImageTransform
     parser = argparse.ArgumentParser(description="Convert a PyTorch dataset to JPEG slices.")
     parser.add_argument("-o", "--output_dir", default="../dataset/images", help="Path to the output directory for JPEG slices.")
     parser.add_argument("-i", "--input_dir", default="../dataset/nii", help="Path to the input directory for nii files.")
@@ -63,8 +64,8 @@ if __name__ == "__main__":
 
     print("might take a while...")
     dataset = LITSDataset(
-        images_dir="../dataset/nii",
-        masks_dir="../dataset/nii",
+        images_dir=args.input_dir,
+        masks_dir=args.input_dir,
         slice_axis=2,
         transform=LITSImageTransform(),
         test_size=0.005,
