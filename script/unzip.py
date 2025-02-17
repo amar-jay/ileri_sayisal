@@ -27,13 +27,13 @@ def unzip_dir(source_dir, target_dir):
                         # check if nii file is working
                         nii_file = nib.load(nii_file_path)
                         _ = nii_file.get_fdata()
-                        print(f"Unzipped {target_dir}")
+                        print(f"Unzipped {i} {target_dir}")
                     except Exception as e:
                         # remove nii file if it exists
                         if os.path.exists(nii_file_path):
                             os.remove(nii_file_path)
                         NO_ERRORS += 1
-                        # print(f"Error - {zip_file_path}: {e}")
+                        print(f"Error - {i} {zip_file_path}: {e}")
 
     NO_VALID = len(os.listdir(target_dir))
     print(f"NO OF CORRUPTED FILES: {NO_ERRORS} {NO_ERRORS/(NO_VALID + NO_ERRORS)*100:.4f}%")
@@ -43,8 +43,9 @@ if __name__ == "__main__":
     # Define the source and target directories
     import argparse
     parser = argparse.ArgumentParser(description="Unzip a directory to another location.")
-    parser.add_argument("source_dir", type=str,default="../dataset/zip", help="Path to the source directory.")
-    parser.add_argument("target_dir", type=str,  default="../dataset/nii", help="Path to the target directory.")
+    parser.add_argument("--source_dir", "-s", type=str,default="dataset/zip", help="Path to the source directory.")
+    parser.add_argument("--target_dir", "-t", type=str,  default="dataset/nii", help="Path to the target directory.")
 
     args = parser.parse_args()
+    print(args)
     unzip_dir(args.source_dir, args.target_dir)

@@ -1,0 +1,13 @@
+Epoch 1/10:   0%|                                                                                                                       | 0/1104 [00:50<?, ?it/s]
+Traceback (most recent call last):
+  File "/teamspace/studios/this_studio/ileri_sayisal/train_hf.py", line 168, in <module>
+    finetuner.train(train_loader, val_loader)
+  File "/teamspace/studios/this_studio/ileri_sayisal/train_hf.py", line 71, in train
+    pixel_values = batch['pixel_values'].to(self.device)
+KeyError: 'pixel_values'
+Traceback (most recent call last):
+  File "/teamspace/studios/this_studio/ileri_sayisal/train_hf.py", line 168, in <module>
+    finetuner.train(train_loader, val_loader)
+  File "/teamspace/studios/this_studio/ileri_sayisal/train_hf.py", line 71, in train
+    pixel_values = batch['pixel_values'].to(self.device)
+KeyError: 'pixel_values'
