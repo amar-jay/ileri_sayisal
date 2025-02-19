@@ -1,0 +1,28 @@
+Epoch 1/10:   0%|                                                                                                     | 0/1104 [00:00<?, ?it/s]Exception ignored in: <function _MultiProcessingDataLoaderIter.__del__ at 0x7f0fc2995f30>
+Traceback (most recent call last):
+  File "/home/zeus/miniconda3/envs/cloudspace/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1479, in __del__
+    self._shutdown_workers()
+  File "/home/zeus/miniconda3/envs/cloudspace/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1443, in _shutdown_workers
+    w.join(timeout=_utils.MP_STATUS_CHECK_INTERVAL)
+  File "/home/zeus/miniconda3/envs/cloudspace/lib/python3.10/multiprocessing/process.py", line 149, in join
+    res = self._popen.wait(timeout)
+  File "/home/zeus/miniconda3/envs/cloudspace/lib/python3.10/multiprocessing/popen_fork.py", line 40, in wait
+    if not wait([self.sentinel], timeout):
+  File "/home/zeus/miniconda3/envs/cloudspace/lib/python3.10/multiprocessing/connection.py", line 931, in wait
+    ready = selector.select(timeout)
+  File "/home/zeus/miniconda3/envs/cloudspace/lib/python3.10/selectors.py", line 416, in select
+    fd_event_list = self._selector.poll(timeout)
+KeyboardInterrupt:
+Epoch 1/10:   0%|                                                                                                     | 0/1104 [00:50<?, ?it/s]
+Traceback (most recent call last):
+  File "/teamspace/studios/this_studio/ileri_sayisal/train_hf.py", line 171, in <module>
+    finetuner.train(train_loader, val_loader)
+  File "/teamspace/studios/this_studio/ileri_sayisal/train_hf.py", line 71, in train
+    pixel_values = batch['pixel_values'].to(self.device)
+KeyError: 'pixel_values'
+Traceback (most recent call last):
+  File "/teamspace/studios/this_studio/ileri_sayisal/train_hf.py", line 171, in <module>
+    finetuner.train(train_loader, val_loader)
+  File "/teamspace/studios/this_studio/ileri_sayisal/train_hf.py", line 71, in train
+    pixel_values = batch['pixel_values'].to(self.device)
+KeyError: 'pixel_values'

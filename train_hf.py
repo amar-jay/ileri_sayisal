@@ -128,19 +128,27 @@ if __name__ == "__main__":
 
     processor = SamProcessor.from_pretrained("facebook/sam-vit-huge")
     test_size = 0.2
+    mapping_cache_path = "slice_mapping_sam.pkl"
+    print("loading 1...")
     train_dataset = LITSDataset(
         images_dir="dataset/nii",
         masks_dir="dataset/nii",
         slice_axis=2,
-        transform=LITSImageTransform(),
+        mapping_cache_path=mapping_cache_path,
+        transform=LITSImageTransform(
+            processor = processor,
+        ),
         test_size=test_size,
         split="train")
-
+    print("loading 2...")
     val_dataset = LITSDataset(
         images_dir="dataset/nii",
         masks_dir="dataset/nii",
         slice_axis=2,
-        transform=LITSImageTransform(),
+        mapping_cache_path=mapping_cache_path,
+        transform=LITSImageTransform(
+            processor = processor,
+        ),
         test_size=test_size,
         split="test")
         

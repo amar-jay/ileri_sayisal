@@ -1,0 +1,23 @@
+2025-02-17 23:28:25,794 INFO    MainThread:140870 [wandb_setup.py:_flush():68] Current SDK version is 0.19.6
+2025-02-17 23:28:25,794 INFO    MainThread:140870 [wandb_setup.py:_flush():68] Configure stats pid to 140870
+2025-02-17 23:28:25,794 INFO    MainThread:140870 [wandb_setup.py:_flush():68] Loading settings from /teamspace/studios/this_studio/.config/wandb/settings
+2025-02-17 23:28:25,795 INFO    MainThread:140870 [wandb_setup.py:_flush():68] Loading settings from /teamspace/studios/this_studio/ileri_sayisal/wandb/settings
+2025-02-17 23:28:25,795 INFO    MainThread:140870 [wandb_setup.py:_flush():68] Loading settings from environment variables
+2025-02-17 23:28:25,795 INFO    MainThread:140870 [wandb_init.py:setup_run_log_directory():637] Logging user logs to /teamspace/studios/this_studio/ileri_sayisal/wandb/run-20250217_232825-l2brpy4f/logs/debug.log
+2025-02-17 23:28:25,795 INFO    MainThread:140870 [wandb_init.py:setup_run_log_directory():638] Logging internal logs to /teamspace/studios/this_studio/ileri_sayisal/wandb/run-20250217_232825-l2brpy4f/logs/debug-internal.log
+2025-02-17 23:28:25,795 INFO    MainThread:140870 [wandb_init.py:init():756] calling init triggers
+2025-02-17 23:28:25,795 INFO    MainThread:140870 [wandb_init.py:init():761] wandb.init called with sweep_config: {}
+config: {'_wandb': {}}
+2025-02-17 23:28:25,795 INFO    MainThread:140870 [wandb_init.py:init():789] starting backend
+2025-02-17 23:28:26,002 INFO    MainThread:140870 [wandb_init.py:init():793] sending inform_init request
+2025-02-17 23:28:26,007 INFO    MainThread:140870 [backend.py:_multiprocessing_setup():97] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2025-02-17 23:28:26,007 INFO    MainThread:140870 [wandb_init.py:init():808] backend started and connected
+2025-02-17 23:28:26,008 INFO    MainThread:140870 [wandb_init.py:init():901] updated telemetry
+2025-02-17 23:28:26,021 INFO    MainThread:140870 [wandb_init.py:init():936] communicating run to backend with 90.0 second timeout
+2025-02-17 23:28:26,286 INFO    MainThread:140870 [wandb_init.py:init():994] starting run threads in backend
+2025-02-17 23:28:26,465 INFO    MainThread:140870 [wandb_run.py:_console_start():2385] atexit reg
+2025-02-17 23:28:26,465 INFO    MainThread:140870 [wandb_run.py:_redirect():2235] redirect: wrap_raw
+2025-02-17 23:28:26,465 INFO    MainThread:140870 [wandb_run.py:_redirect():2300] Wrapping output streams.
+2025-02-17 23:28:26,465 INFO    MainThread:140870 [wandb_run.py:_redirect():2325] Redirects installed.
+2025-02-17 23:28:26,466 INFO    MainThread:140870 [wandb_init.py:init():1036] run started, returning control to user process
+2025-02-17 23:28:35,347 WARNING MsgRouterThr:140870 [router.py:message_loop():75] message_loop has been closed

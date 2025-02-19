@@ -6,7 +6,7 @@ def calculate_iou(preds, masks, num_classes):
     for i in range(num_classes):
         pred_i = (preds == i)
         mask_i = (masks == i)
-        intersection = torch.sum(pred_i & mask_i).float()
+        intersection = torch.sum(pred_i & mask_i).()
         union = torch.sum(pred_i | mask_i).float()
         iou = intersection / (union + 1e-6)  # Avoid division by zero
         iou_list.append(iou.item())

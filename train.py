@@ -113,19 +113,22 @@ def train_model_large(model, dataset, criterion, optimizer, num_epochs=3, batch_
             images = images.repeat(1, 3, 1, 1)  # Repeat channels for a 3-channel input
             images_expected_shape = (batch_size, 3, 512, 512)
             masks_expected_shape = (batch_size, 512, 512)
-            
+            if masks.ndim  == 4:
+                masks = masks.squeeze(1)
+
             # NOTE: BAD WAY OF RESOLVING THE ISSUE, FIND THE PROBLEM FIRST.
             if images.shape != images_expected_shape or masks.shape != masks_expected_shape:
-                print(f"There is an issue to the image or mask shape {images.shape=} {masks.shape=}")
+                print(f"There is an issue to the image or mask shape\n{images.shape=} expected {images_expected_shape=}\n{masks.shape=} expected  {masks_expected_shape=}")
                 continue
             # Forward pass
             outputs = model(images)['out']
-            # print(outputs.shape)
-            # print(outputs.dtype)
-            # print("-"*10)
-            # print(images.shape, masks.shape)
-            # print(images.dtype, masks.dtype, torch.unique(masks))
-            loss = criterion(outputs, masks)
+
+            # NOTE: 
+            # DONT KNOW IF THIS IS THE BEST WAY TO DO THIS BUT MASK GIVES 0, 0.0039, and 0.0078 consistently in this dataset.
+            # I  AM RESCALING THE DATASET TO THE 0.0078
+            masks /= masks.max()
+            # print(outputs.dtype, masks.dtype, torch.unique(masks), torch.unique(outputs))
+            loss = criterion(outputs, masks.long())
             # in inference
             #outputs = torch.argmax(outputs, dim=1, keepdim=True).squeeze(1)
 
@@ -161,9 +164,10 @@ if __name__ == "__main__":
     save_path = os.path.join(args.build_path, 'f_small_model.pth' if args.use_small else 'f_large_model.pth') # float model path
 
     dataset = LITSDataset(
-    images_dir="../dataset/nii",
-    masks_dir="../dataset/nii",
+    images_dir="dataset/nii",
+    masks_dir="dataset/nii",
     slice_axis=2,
+    num_channels=1,
     transform=LITSImageTransform(),
     test_size=0.2,
     split="train")
@@ -192,7 +196,7 @@ if __name__ == "__main__":
         train_model_large(
             model=model, 
             dataset=dataset,
-            criterion=nn.CrossEntropyLoss(), 
+            criterion= nn.CrossEntropyLoss(), 
             optimizer=torch.optim.AdamW(model.parameters(), lr=0.001), 
             num_epochs=args.epochs,
             device=args.device,
