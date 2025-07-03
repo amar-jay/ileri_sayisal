@@ -42,18 +42,27 @@ class LITSDataset(Dataset):
             raise RuntimeError(f"No .nii files found in {images_dir}")
 
         # Pre-calculate valid slices for each volume
-        slices_mapping = self._create_slices_mapping()
+        self.slices_mapping = self._create_slices_mapping()
 
         # Split into train and test
         train_slices, test_slices = train_test_split(
-            slices_mapping, test_size=test_size, random_state=random_state
+            self.slices_mapping, test_size=test_size, random_state=random_state
         )
+        self.train_slices = train_slices
+        self.test_slices = test_slices
         if split == "train":
-            self.slices_mapping = train_slices
+            self.slices_mapping = self.train_slices
         elif split == "test":
-            self.slices_mapping = test_slices
+            self.slices_mapping = self.test_slices
+
+    def set_split(self, split="all"):
+        """to reset slice. this is to avoid retransforming the dataset"""
+        if split == "train":
+            self.slices_mapping = self.train_slices
+        elif split == "test":
+            self.slices_mapping = self.test_slices
         else:
-            self.slices_mapping = slices_mapping
+            raise Exception("Split has to be train or test split")
 
     def _get_slice(self, volume, slice_idx):
         """Get slice along specified axis"""
@@ -333,21 +342,23 @@ if __name__ == "__main__":
         transform=LITSImageTransform(),
         mapping_cache_path = "slice_mapping.pkl",
         test_size=0.2,
-        split="test")
-
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
+        )
+    print("dataset testing...")
+    print(f"{dataset=}\n{len(dataset)=}")
 
     # Record the time after loading the dataset
     dataset_load_time = time.time() - start_time
 
+    dataset.set_split("test") # using the test split    
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
+
+
     for sample in dataloader:
         print(sample.keys())
         break
-    print("dataset testing...")
-    print(f"{dataset=}\n{len(dataset)=}")
+
     print("dataloader testing...")
     print(f"{dataloader=}")
-
 
     # Record the time after loading the dataset
     dataset_sample_time = time.time() - start_time - dataset_load_time

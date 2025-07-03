@@ -9,7 +9,13 @@ from torchvision.models.segmentation import DeepLabV3_ResNet50_Weights, LRASPP_M
 # Model Definition
 def get_model_small(num_classes, weights_path, device="cpu"):
     model = models.segmentation.lraspp_mobilenet_v3_large(weights=LRASPP_MobileNet_V3_Large_Weights.DEFAULT)
-    model.classifier[4] = nn.Conv2d(256, num_classes, kernel_size=1)
+    in_channels_low = model.classifier.low_classifier.in_channels  # should be 40
+    model.classifier.low_classifier = nn.Conv2d(in_channels_low, num_classes, kernel_size=1)
+
+    # Replace high_classifier
+    in_channels_high = model.classifier.high_classifier.in_channels  # should be 128
+    model.classifier.high_classifier = nn.Conv2d(in_channels_high, num_classes, kernel_size=1)
+
     model.to(device)
     
     # Check if weights exist locally    
@@ -31,13 +37,13 @@ def get_model_large(num_classes, weights_path, device="cpu"):
     return model
 
 
-def train_model(model, dataset, criterion, optimizer, num_epochs=3, batch_size=4, device="cpu"):
+def train_model(model, dataset, criterion, optimizer, save_path, num_epochs=3, batch_size=4, device="cpu"):
     model.to(device)
     for epoch in range(num_epochs):
         model.train()
         epoch_loss = 0
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
-        for sample in tqdm(dataloader, desc=f"model large training..."):
+        for sample in tqdm(dataloader, desc=f"training model..."):
             images = sample['image'].to(device) # Shape: [B, 1, 512, 512]
             masks = sample['mask'].to(device)   # Shape: [B, 512, 512]
             
@@ -71,6 +77,10 @@ def train_model(model, dataset, criterion, optimizer, num_epochs=3, batch_size=4
             epoch_loss += loss.item()
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss / len(dataloader):.4f}")
         print("DONE. - ", epoch)
+        print("Saving model in ", args.build_path)
+        if os.path.exists(save_path):
+            os.remove(save_path)
+        torch.save(model.state_dict(), save_path) 
 
 
 if __name__ == "__main__":
@@ -99,8 +109,9 @@ if __name__ == "__main__":
     slice_axis=2,
     num_channels=1,
     transform=LITSImageTransform(),
-    test_size=0.2,
+    test_size=0.05,
     split="train")
+    dataset.set_split("train")
 
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
     print("length of dataset = ", len(dataset),  "\n", "-"*8)
@@ -132,15 +143,12 @@ if __name__ == "__main__":
         criterion= nn.CrossEntropyLoss(), 
         optimizer=torch.optim.AdamW(model.parameters(), lr=0.001), 
         num_epochs=args.epochs,
+        save_path=save_path,
         device=args.device,
         batch_size=args.batch_size
         )
 
 
     # save the trained model
-    print("Saving model in ", args.build_path)
-    if os.path.exists(save_path):
-        os.remove(save_path)
-    torch.save(model.state_dict(), save_path) 
     print('Trained model written to',save_path)
     print("Finished training successfully")
