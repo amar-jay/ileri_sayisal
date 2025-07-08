@@ -8,43 +8,38 @@ import argparse
 import os
 
 @torch.no_grad()
-def infer_frame(model, frame, device, transform, num_classes=3, threshold=0.65):
+def infer_frame(model, frame, device, transform, num_classes=3, threshold=0.9):
     # Resize and preprocess
     img = cv2.resize(frame, (512, 512))
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gray = gray.astype(np.float32) / 255.0
-    tensor_img = torch.tensor(gray).unsqueeze(0).unsqueeze(0)
-    sample = {
-        "image": tensor_img,
-        "mask": tensor_img
-    }
-    tensor_img = transform(sample)["image"]  # Apply dataset transform if needed
-    tensor_img = tensor_img.repeat(1, 3, 1, 1).to(device)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # expected grayscale
+    img = img.astype(np.float32) / 255.0
+    img = torch.tensor(img).unsqueeze(0).unsqueeze(0)  # shape: [1, 1, H, W]
 
-    # Forward pass
-    output = model(tensor_img)['out']
-    prob = F.softmax(output, dim=1).squeeze(0)  # [C, H, W]
+    img = transform(img)
+    img = img.repeat(1, 3, 1, 1).to(device)
 
-    overlay = img.copy()
+    # Model forward
+    output = model(img)['out']
+    probs = F.softmax(output, dim=1)  # [1, C, H, W]
+    conf, pred = torch.max(probs, dim=1)  # [1, H, W] each
 
-    # Define color map for classes (adjust as needed)
-    class_colors = {
-        1: (0, 255, 0),   # class 1 - green
-        2: (0, 0, 255)    # class 2 - red
-    }
+    pred = pred.squeeze(0)         # shape: [H, W]
+    conf = conf.squeeze(0)         # shape: [H, W]
 
-    for cls in [1, 2]:  # skip background class 0
-        cls_prob = prob[cls].cpu().numpy()
-        mask = (cls_prob > threshold).astype(np.uint8)
+    # Apply confidence threshold
+    pred_masked = torch.where(conf >= threshold, pred, torch.tensor(0, device=pred.device))  # class 0 for low conf
 
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        for cnt in contours:
-            x, y, w, h = cv2.boundingRect(cnt)
-            if w * h > 20:  # optional filter for small noise boxes
-                cv2.rectangle(overlay, (x, y), (x + w, y + h), class_colors[cls], 2)
-                cv2.putText(overlay, f"Class {cls}", (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, class_colors[cls], 1)
+    pred_np = pred_masked.cpu().numpy().astype(np.uint8)
 
+    # Overlay mask
+    overlay = np.zeros((512, 512, 3), dtype=np.uint8)
+    colors = [(0, 0, 0), (0, 255, 0), (0, 0, 255)]  # class 0, 1, 2
+    for cls in range(num_classes):
+        overlay[pred_np == cls] = colors[cls]
+
+    overlay = cv2.addWeighted(cv2.resize(frame, (512, 512)), 0.5, overlay, 0.5, 0)
     return overlay
+
 
 def infer_on_video(video_path, model, device, transform):
     cap = cv2.VideoCapture(video_path)
