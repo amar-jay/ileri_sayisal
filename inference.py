@@ -8,31 +8,39 @@ import argparse
 import os
 
 @torch.no_grad()
-def infer_frame(model, frame, device, transform, num_classes=3):
+def infer_frame(model, frame, device, transform, num_classes=3, threshold=0.65):
     # Resize and preprocess
     img = cv2.resize(frame, (512, 512))
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # if grayscale expected
-    img = img.astype(np.float32) / 255.0
-    img = torch.tensor(img).unsqueeze(0).unsqueeze(0)  # shape: [H, W]
-    print(img.shape)
-    sample = {
-        "image": img,
-        "mask": img,
-    }
-    img = transform(sample)["image"]  # If needed; skip if already normalized properly
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = gray.astype(np.float32) / 255.0
+    tensor_img = torch.tensor(gray).unsqueeze(0).unsqueeze(0)
 
-    # Repeat for 3 channels
-    img = img.repeat(1, 3, 1, 1).to(device)
-    output = model(img)['out']
-    output = F.softmax(output, dim=1)
-    pred = torch.argmax(output, dim=1).squeeze().cpu().numpy().astype(np.uint8)  # [H, W]
-    
-    # Overlay (naive colormap)
-    overlay = np.zeros((512, 512, 3), dtype=np.uint8)
-    colors = [(0,0,0), (0,255,0), (0,0,255)]  # background, class1, class2
-    for cls in range(num_classes):
-        overlay[pred == cls] = colors[cls]
-    overlay = cv2.addWeighted(cv2.resize(frame, (512, 512)), 0.5, overlay, 0.5, 0)
+    tensor_img = transform(tensor_img)  # Apply dataset transform if needed
+    tensor_img = tensor_img.repeat(1, 3, 1, 1).to(device)
+
+    # Forward pass
+    output = model(tensor_img)['out']
+    prob = F.softmax(output, dim=1).squeeze(0)  # [C, H, W]
+
+    overlay = img.copy()
+
+    # Define color map for classes (adjust as needed)
+    class_colors = {
+        1: (0, 255, 0),   # class 1 - green
+        2: (0, 0, 255)    # class 2 - red
+    }
+
+    for cls in [1, 2]:  # skip background class 0
+        cls_prob = prob[cls].cpu().numpy()
+        mask = (cls_prob > threshold).astype(np.uint8)
+
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            x, y, w, h = cv2.boundingRect(cnt)
+            if w * h > 20:  # optional filter for small noise boxes
+                cv2.rectangle(overlay, (x, y), (x + w, y + h), class_colors[cls], 2)
+                cv2.putText(overlay, f"Class {cls}", (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, class_colors[cls], 1)
+
     return overlay
 
 def infer_on_video(video_path, model, device, transform):
