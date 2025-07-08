@@ -14,8 +14,11 @@ def infer_frame(model, frame, device, transform, num_classes=3, threshold=0.65):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray = gray.astype(np.float32) / 255.0
     tensor_img = torch.tensor(gray).unsqueeze(0).unsqueeze(0)
-
-    tensor_img = transform(tensor_img)  # Apply dataset transform if needed
+    sample = {
+        "image": tensor_img,
+        "mask": tensor_img
+    }
+    tensor_img = transform(sample)["image"]  # Apply dataset transform if needed
     tensor_img = tensor_img.repeat(1, 3, 1, 1).to(device)
 
     # Forward pass
