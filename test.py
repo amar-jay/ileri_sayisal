@@ -3,38 +3,10 @@ import torch
 from tqdm import tqdm
 import json
 import torch.nn.functional as F
-# def calculate_iou(pred, mask):
-#     pred = (pred == 1)
-#     mask = (mask == 1)
-#     intersection = torch.sum(pred & mask).float()
-#     union = torch.sum(pred | mask).float()
-#     iou = intersection / (union + 1e-6)  # Avoid division by zero
-#     return iou
-
-# def calculate_iou(groundtruth_mask, pred_mask):
-#     intersect = torch.sum(pred_mask*groundtruth_mask)
-#     union = torch.sum(pred_mask) + torch.sum(groundtruth_mask) - intersect
-#     iou = torch.mean(intersect/union)
-#     return iou
-
-# def calculate_dice(groundtruth_mask, pred_mask):
-#     intersect = torch.sum(pred_mask*groundtruth_mask)
-#     total_sum = torch.sum(pred_mask) + torch.sum(groundtruth_mask)
-#     dice = torch.mean(2*intersect/total_sum)
-#     return dice
-
-# def calculate_dice(pred, mask):
-#     # pred = (pred == 1)
-#     # mask = (mask == 1)
-#     intersection = torch.sum(pred == mask).float()
-#     total_sum = torch.sum(pred | mask).float() + intersection 
-#     dice = torch.mean(2*intersection/total_sum + 1e-6)
-#     return dice
 
 # Accuracy score, also known as Rand index is the number of correct predictions, 
 # consisting of correct positive and negative predictions divided by the total number of predictions.
     
-
 def calculate_precision(preds, targets, num_classes=3):
     precisions = []
     for cls in range(num_classes):
@@ -201,7 +173,7 @@ def evaluate(model, dataset, batch_size=4, device="cpu"):
     return
 
 if __name__ == "__main__":
-    from train import get_model_large
+    from train import get_model_large, get_model_small
     from dataset import LITSDataset, LITSImageTransform
     import argparse
     import os
@@ -226,6 +198,12 @@ if __name__ == "__main__":
 
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
-    model = get_model_large(3, save_path) 
+    if "large" in save_path:
+        model = get_model_large(3, save_path) 
+    elif "small" in save_path:
+        model = get_model_small(3, save_path)
+    else:
+        raise ValueError("Unknown model size")
+
     model.to(args.device)  
     evaluate(model, dataset, batch_size=args.batch_size, device=args.device) 
