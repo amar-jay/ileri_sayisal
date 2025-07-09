@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 import torch
 from tqdm import tqdm
 import torch.nn as nn
@@ -7,8 +8,8 @@ import torch.nn.functional as F
 from torchvision.models.segmentation import DeepLabV3_ResNet50_Weights, LRASPP_MobileNet_V3_Large_Weights
 
 # Model Definition
-def get_model_small(num_classes, weights_path, device="cpu"):
-    model = models.segmentation.lraspp_mobilenet_v3_large(weights=LRASPP_MobileNet_V3_Large_Weights.DEFAULT)
+def get_model_small(num_classes, weights_path, device="cpu", weights:Optional[LRASPP_MobileNet_V3_Large_Weights]=LRASPP_MobileNet_V3_Large_Weights.DEFAULT):
+    model = models.segmentation.lraspp_mobilenet_v3_large(weights=weights)
     in_channels_low = model.classifier.low_classifier.in_channels  # should be 40
     model.classifier.low_classifier = nn.Conv2d(in_channels_low, num_classes, kernel_size=1)
 
@@ -25,8 +26,8 @@ def get_model_small(num_classes, weights_path, device="cpu"):
     return model
 
 # Model Definition
-def get_model_large(num_classes, weights_path, device="cpu"):
-    model = models.segmentation.deeplabv3_resnet50(weights=DeepLabV3_ResNet50_Weights.DEFAULT)
+def get_model_large(num_classes, weights_path, device="cpu", weights:Optional[DeepLabV3_ResNet50_Weights]=DeepLabV3_ResNet50_Weights.DEFAULT):
+    model = models.segmentation.deeplabv3_resnet50(weights=weights)
     model.classifier[4] = nn.Conv2d(256, num_classes, kernel_size=1)
     model.to(device)
     

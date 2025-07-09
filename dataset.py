@@ -183,6 +183,43 @@ class LITSDataset(Dataset):
 
 
 
+def create_sample_from_nii(nii_path: str, mask_path: str):
+    nib_img = nib.load(nii_path).get_fdata()
+    mask_img = nib.load(mask_path).get_fdata()
+
+    max_non_zero = 0
+    max_count = 0
+    max_slice_idx = 0
+    selected_slice = None
+
+    for slice_idx in range(nib_img.shape[2]):
+        slice_2d = nib_img[:, :, slice_idx]
+        mask_slice_2d = mask_img[:, :, slice_idx]
+
+        non_zero = np.count_nonzero(slice_2d)
+        count_2 = np.count_nonzero(mask_slice_2d == 2)
+
+        if non_zero > max_non_zero and count_2 > max_count:
+            max_non_zero = non_zero
+            max_count = count_2
+            max_slice_idx = slice_idx
+            selected_slice = slice_2d
+
+    # Normalize the selected slice
+    selected_slice = (selected_slice - selected_slice.min()) / (selected_slice.max() - selected_slice.min() + 1e-8)
+
+    # Convert to tensor
+    slice_tensor = torch.from_numpy(selected_slice).float().unsqueeze(0)  # Add channel dimension
+    slice_tensor = slice_tensor.repeat(3, 1, 1)
+
+    mask_tensor = torch.from_numpy(mask_img[:, :, max_slice_idx]).unsqueeze(0)  # Add channel dimension
+
+
+    return {
+        "image": slice_tensor,
+        "mask": mask_tensor,
+        "sllce_idx": max_slice_idx,
+    }
 
 class LITSImageTransform:
     """
@@ -300,9 +337,9 @@ class LITSImageTransform:
         image_pil = TF.to_pil_image(image.squeeze())
         mask_pil = TF.to_pil_image(mask.to(torch.uint8).squeeze()) if mask is not None else None
 
-        
-        image_pil, mask_pil = self.random_rotate(image_pil, mask_pil)
-        image_pil, mask_pil = self.random_flip(image_pil, mask_pil)
+        if self.train:
+            image_pil, mask_pil = self.random_rotate(image_pil, mask_pil)
+            image_pil, mask_pil = self.random_flip(image_pil, mask_pil)
         # # Normalize Intensity
         # if self.normalize:
         #     image = self.normalize_intensity(image)
