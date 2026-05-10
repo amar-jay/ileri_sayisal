@@ -4,7 +4,7 @@ A complete research prototype for liver and tumor segmentation using the LiTS da
 
 ## Overview
 
-This project demonstrates a full pipeline for medical image segmentation on edge hardware. The workflow includes:
+This demonstrates a full pipeline for medical image segmentation on edge hardware. The workflow includes:
 
 - converting 3D NIfTI CT volumes into 2D axial slices,
 - training segmentation models using PyTorch,
@@ -157,7 +157,6 @@ python3 api.py
 ```
 
 Available endpoints:
-
 - `GET /api/health` — basic health check
 - `GET /api/model-info` — model metadata and quantization details
 - `POST /api/predict` — run inference on an uploaded scan
@@ -174,30 +173,9 @@ bun run dev
 
 Then open the local URL shown by Bun in your browser.
 
-## Project structure
-
-- `dataset.py` — NIfTI loader, slice mapping, preprocessing, augmentation
-- `train.py` — training script for model training and checkpoint saving
-- `quantize.py` — quantization workflow for FPGA deployment
-- `api.py` — Flask server for inference and visualization payloads
-- `app/` — frontend dashboard and UI assets
-- `script/` — dataset download and unzip helpers
-- `build/` — output folder for trained weights and quantized models
-
-## Recommended workflow
-
-1. Install dependencies
-2. Download dataset
-3. Unzip dataset files
-4. Validate dataset with `python3 dataset.py`
-5. Train the model with `python3 train.py`
-6. Quantize with `python3 quantize.py`
-7. Deploy project files to the target KV260 board
-8. Run the inference API with `python3 api.py` on the KV260
-9. Launch the React frontend dashboard in `app/`
-
 ## Notes
 
-- This project is titled **Medical Image Segmentation using FPGA**.
 - If you modify dataset locations or model paths, update the script arguments accordingly.
+- Dashboard is usually run on host machine rather than kv260 starter kit to reduce burden on CPU for a more transparent inference cost mensuration.
+- Downloading dataset via the torrent is the best approach. the drive dataset is a copy of the dataset at the time of writing this paper.
 - The current API implementation expects the large model file at `./build/f_large_model.pth` unless you modify `api.py`.
