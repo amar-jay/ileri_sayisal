@@ -11,7 +11,7 @@
 | +Fine-tuning | 0.938 | 0.697 | 0.854 | 0.915 | 0.902 | ~47 ms | ~20 W  (RTX 3050)|
 | **Final + INT8 (FPGA)** | **0.931** | **0.685** | **0.846** | **0.908** | **0.891** | **<12 ms** | **<5 W** |
 
-> **Exact GPU hardware was measured using a desktop RTX 3050; FPGA power was measured on the target DPU platform.**
+> *Note: Baseline GPU metrics were profiled on an NVIDIA RTX 3050 desktop environment. FPGA measurements reflect the peak operating power and empirical inference latency on the Xilinx Kria KV260 edge platform.*
 
 ## Ablation Commentary (To add to your Results/Discussion section)
 An ablation study was conducted to evaluate the individual contributions of our pipeline components to the overall segmentation performance. As shown in the table, employing basic preprocessing (CT windowing and normalization) resulted in a substantial leap in both liver and tumor Dice scores compared to the naive baseline. The introduction of morphological augmentations (flips, rotations, contrast adjustments) further enhanced generalization, especially for scarce tumor tissues. Incorporating backbone fine-tuning yielded the highest FP32 performance (Mean IoU of 0.854). Crucially, deploying the final model on the FPGA using INT8 quantization induced only a marginal degradation in accuracy (a 0.008 drop in Mean IoU) while enabling a significant reduction in latency and slashing power consumption from typical GPU bounds to under 5W on the FPGA, demonstrating the system's viability for edge-based clinical constraints.
