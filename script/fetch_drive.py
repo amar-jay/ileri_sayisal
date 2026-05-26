@@ -60,10 +60,10 @@ def main():
     import argparse
     import os
     parser = argparse.ArgumentParser(description="Download directory from google drive")
-    parser.add_argument("folder_id", type=str,default='1--R67mtcexfeXIneo6Sf0q9qCw0NHCql', help="Replace with the folder ID from Google Drive")
-    parser.add_argument("local_folder", type=str,  default="../dataset/zip", help="Replace with your desired local folder name")
+    parser.add_argument("--folder_id", type=str, default='1--R67mtcexfeXIneo6Sf0q9qCw0NHCql', help="Replace with the folder ID from Google Drive")
+    parser.add_argument("--local_folder", type=str, default="../dataset/zip", help="Replace with your desired local folder name")
     args = parser.parse_args()
-
+    print(args)
     os.makedirs(args.local_folder, exist_ok=True)
 
     creds = authenticate()

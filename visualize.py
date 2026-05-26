@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from PIL import Image
 import numpy as np
 import nibabel as nib
 from typing import Optional, Tuple, Union
@@ -174,78 +175,6 @@ def visualize_nii(
     plt.tight_layout()
     return fig, axes
 
-def create_slice_browser(
-    nii_path: Union[str, Path],
-    axis: int = 2,  # 0: sagittal, 1: coronal, 2: axial
-    mask_path: Optional[Union[str, Path]] = None,
-    cmap: str = 'gray',
-    figsize: Tuple[int, int] = (8, 8)
-) -> None:
-    """
-    Create an interactive slice browser for a NIfTI file.
-
-    Args:
-        nii_path: Path to the NIfTI file
-        axis: Axis to browse (0: sagittal, 1: coronal, 2: axial)
-        mask_path: Optional path to the mask NIfTI file
-        cmap: Colormap for the image
-        figsize: Figure size
-    """
-    img = nib.load(str(nii_path))
-    data = img.get_fdata()
-
-    if mask_path:
-        mask = nib.load(str(mask_path))
-        mask_data = mask.get_fdata()
-    else:
-        mask_data = None
-
-    fig, ax = plt.subplots(figsize=figsize)
-    ax.axis('off')
-
-    class IndexTracker:
-        def __init__(self, ax, data, mask_data=None):
-            self.ax = ax
-            self.data = data
-            self.mask_data = mask_data
-            self.slc = data.shape[axis] // 2
-            self.update()
-
-        def onscroll(self, event):
-            if event.button == 'up':
-                self.slc = min(self.slc + 1, self.data.shape[axis] - 1)
-            else:
-                self.slc = max(self.slc - 1, 0)
-            self.update()
-
-        def update(self):
-            plt.cla()
-            if axis == 0:
-                img_slice = self.data[self.slc, :, :]
-                mask_slice = self.mask_data[self.slc, :, :] if self.mask_data is not None else None
-            elif axis == 1:
-                img_slice = self.data[:, self.slc, :]
-                mask_slice = self.mask_data[:, self.slc, :] if self.mask_data is not None else None
-            else:
-                img_slice = self.data[:, :, self.slc]
-                mask_slice = self.mask_data[:, :, self.slc] if self.mask_data is not None else None
-
-            # Normalize slice
-            img_slice = (img_slice - img_slice.min()) / (img_slice.max() - img_slice.min() + 1e-8)
-
-            self.ax.imshow(np.rot90(img_slice), cmap=cmap)
-            if mask_slice is not None:
-                self.ax.imshow(np.rot90(mask_slice), alpha=0.3, cmap='Reds')
-
-            self.ax.set_title(f'Slice {self.slc}/{self.data.shape[axis] - 1}')
-            self.ax.axis('off')
-            plt.draw()
-
-
-    tracker = IndexTracker(ax, data, mask_data)
-    fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
-    plt.show()
-
 
 # Assuming you have a dataset class with the __getitem__ method as provided
 def visualize_sample(sample):
@@ -256,7 +185,6 @@ def visualize_sample(sample):
     """
     image = sample['image'][0] # fetch only first batch
     mask = sample['mask'][0]
-    mask = mask.unsqueeze(0)
     image = np.transpose(image.numpy(), (1, 2, 0))
     mask = np.transpose(mask.numpy(), (1, 2, 0))
 
@@ -269,7 +197,7 @@ def visualize_sample(sample):
 
     axes[1].imshow(image, cmap='gray', alpha=1.0) 
     axes[1].imshow(mask, cmap='jet', alpha=0.5)  # Overlay mask with transparency
-    # axes[1].imshow(mask.numpy(), cmap='gray')
+
     axes[1].set_title(f"Mask - Slice {sample['slice_idx']}")
     
     axes[1].axis('off')

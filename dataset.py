@@ -1,4 +1,6 @@
 import random
+import os
+import pickle
 from pathlib import Path
 from typing import Optional, Callable, Tuple, List
 import numpy as np
@@ -15,19 +17,24 @@ class LITSDataset(Dataset):
     def __init__(
         self,
         images_dir: str,
+        mapping_cache_path = "slice_mapping.pkl", # Cache file path
         masks_dir: Optional[str] = None,
         slice_axis: int = 2,  # 0: sagittal, 1: coronal, 2: axial
         transform: Optional[Callable] = None,
         test_size: float = 0.2,
         random_state: int = 21,
+        num_channels: int = 1, # should be 1 or 3 depending on the model's requirements. Errors are not so obvious 
         split: str = "all",
-        slice_filter: Optional[float] = 0.1,  # Filter empty/low-information slices
+        slice_filter: Optional[float] = 0.05,  # Filter empty/low-information slices
     ):
         self.images_dir = Path(images_dir)
         self.masks_dir = Path(masks_dir) if masks_dir else None
         self.slice_axis = slice_axis
+        self.num_channels = num_channels
         self.transform = transform
         self.slice_filter = slice_filter
+        self.split = split
+        self.mapping_cache_path = mapping_cache_path
 
         # Get all image paths
         self.image_paths = sorted(list(self.images_dir.glob("volume-*.nii")))
@@ -35,18 +42,27 @@ class LITSDataset(Dataset):
             raise RuntimeError(f"No .nii files found in {images_dir}")
 
         # Pre-calculate valid slices for each volume
-        slices_mapping = self._create_slices_mapping()
+        self.slices_mapping = self._create_slices_mapping()
 
         # Split into train and test
         train_slices, test_slices = train_test_split(
-            slices_mapping, test_size=test_size, random_state=random_state
+            self.slices_mapping, test_size=test_size, random_state=random_state
         )
+        self.train_slices = train_slices
+        self.test_slices = test_slices
         if split == "train":
-            self.slices_mapping = train_slices
+            self.slices_mapping = self.train_slices
         elif split == "test":
-            self.slices_mapping = test_slices
+            self.slices_mapping = self.test_slices
+
+    def set_split(self, split="all"):
+        """to reset slice. this is to avoid retransforming the dataset"""
+        if split == "train":
+            self.slices_mapping = self.train_slices
+        elif split == "test":
+            self.slices_mapping = self.test_slices
         else:
-            self.slices_mapping = slices_mapping
+            raise Exception("Split has to be train or test split")
 
     def _get_slice(self, volume, slice_idx):
         """Get slice along specified axis"""
@@ -61,6 +77,13 @@ class LITSDataset(Dataset):
 
     def _create_slices_mapping(self) -> List[Tuple[Path, int]]:
         """Create mapping of valid slices for each volume"""
+        # Check if the mapping is already cached
+        if os.path.exists(self.mapping_cache_path):
+            with open(self.mapping_cache_path, "rb") as f:
+                print("Loading slice mapping from cache...")
+                return pickle.load(f)
+
+        print("Creating cache of slice mapping (may take a while)...")
         mapping:List[Tuple[Path, int]] = []
 
         for img_path in self.image_paths:
@@ -85,6 +108,12 @@ class LITSDataset(Dataset):
                     if non_zero > self.slice_filter:
                         mapping.append((img_path, slice_idx))
 
+
+        # Save the mapping for future use
+        with open(self.mapping_cache_path, "wb") as f:
+            print("Saving slice mapping to cache...")
+            pickle.dump(mapping, f)
+
         return mapping
 
     def __len__(self) -> int:
@@ -105,25 +134,27 @@ class LITSDataset(Dataset):
         # Convert to tensor
         slice_tensor = torch.from_numpy(slice_2d).float()
         slice_tensor = slice_tensor.unsqueeze(0)  # Add channel dimension
+        if self.num_channels:
+            slice_tensor = slice_tensor.repeat(self.num_channels, 1, 1)
 
         # Load corresponding mask if available
         mask_tensor = None
         if self.masks_dir:
             mask_path = str(img_path).replace("volume", "segmentation")
-            mask = nib.load(str(mask_path))
-            mask_volume = mask.get_fdata()
-            # try:
-            #mask = nib.load(str(mask_path))
-            #mask_volume = mask.get_fdata()
-            # except:
-            #     print(f"Error loading file: {mask_path}")
-            #     # get a random image slice
-            #     return self._load_slice(img_path, random.randint(0, volume.shape[self.slice_axis]-1))
 
+            try:
+                mask = nib.load(str(mask_path))
+                mask_volume = mask.get_fdata()
+            except Exception as e:
+                if self.split == "train":
+                    print(f"Error loading file: {mask_path}")
+                    # get a random image slice
+                    return self._load_slice(img_path, random.randint(0, volume.shape[self.slice_axis]-1))
+                else:
+                    raise e
             mask_2d = self._get_slice(mask_volume, slice_idx)
 
-            mask_tensor = torch.from_numpy(mask_2d).long()
-
+            mask_tensor = torch.from_numpy(mask_2d)
         return slice_tensor, mask_tensor
 
     def __getitem__(self, idx: int) -> dict:
@@ -137,18 +168,58 @@ class LITSDataset(Dataset):
                 'image_path': str(img_path),
                 'slice_idx': slice_idx
             }
-
             if self.transform:
                 sample = self.transform(sample)
 
             return sample
+    
         except Exception as e:
-            print(f"Error - {img_path}: {e}")
-            # get a random image slice
-            return self.__getitem__(random.randint(0, len(self)-1))
+            if self.split == 'train':
+                print(f"Transform Error - {img_path}: {e} ")
+                # get a random image slice
+                return self.__getitem__(random.randint(0, len(self)-1))
+            else:
+                raise e
 
 
 
+def create_sample_from_nii(nii_path: str, mask_path: str):
+    nib_img = nib.load(nii_path).get_fdata()
+    mask_img = nib.load(mask_path).get_fdata()
+
+    max_non_zero = 0
+    max_count = 0
+    max_slice_idx = 0
+    selected_slice = None
+
+    for slice_idx in range(nib_img.shape[2]):
+        slice_2d = nib_img[:, :, slice_idx]
+        mask_slice_2d = mask_img[:, :, slice_idx]
+
+        non_zero = np.count_nonzero(slice_2d)
+        count_2 = np.count_nonzero(mask_slice_2d == 2)
+
+        if non_zero > max_non_zero and count_2 > max_count:
+            max_non_zero = non_zero
+            max_count = count_2
+            max_slice_idx = slice_idx
+            selected_slice = slice_2d
+
+    # Normalize the selected slice
+    selected_slice = (selected_slice - selected_slice.min()) / (selected_slice.max() - selected_slice.min() + 1e-8)
+
+    # Convert to tensor
+    slice_tensor = torch.from_numpy(selected_slice).float().unsqueeze(0)  # Add channel dimension
+    slice_tensor = slice_tensor.repeat(3, 1, 1)
+
+    mask_tensor = torch.from_numpy(mask_img[:, :, max_slice_idx]).unsqueeze(0)  # Add channel dimension
+
+
+    return {
+        "image": slice_tensor,
+        "mask": mask_tensor,
+        "sllce_idx": max_slice_idx,
+    }
 
 class LITSImageTransform:
     """
@@ -157,86 +228,180 @@ class LITSImageTransform:
     """
     def __init__(
         self,
-        intensity_clip: Tuple[float, float] = (0, 99.9),# Percentile values for intensity clipping
-        augmentations: Optional[Callable] = None,# Augmentation function (e.g., Albumentations or TorchVision transforms)
+                train: bool = True,
         normalize: bool = True,
+        output_size = [512, 512],
+        augment_probability: float = 0.5,
+        window_width: int = 400,
+        window_level: int = 40,
         rotation_range = 30,
-        noise_factor = 0.02
+        noise_factor = 0.02,
+        processor = None, #huggingface model processor
     ):
-        self.intensity_clip = intensity_clip
-        self.augmentations = augmentations
+        self.train = train
+        self.output_size = output_size
+        self.augment_probability = augment_probability
+        self.window_level = window_level
+        self.window_width = window_width
+        self.processor = processor
+
         self.normalize = normalize
         self.rotation_range = rotation_range
         self.noise_factor = noise_factor
 
-    def clip_intensity(self, image: torch.Tensor) -> torch.Tensor:
-        """Clip intensity values using the specified percentiles."""
-        lower_percentile, upper_percentile = np.percentile(image.numpy(), self.intensity_clip)
-        return torch.clip(image, lower_percentile, upper_percentile)
+    def normalize_image(self, image: torch.Tensor) -> torch.Tensor:
+        """Normalize image to [-1, 1] range."""
+        if self.normalize:
+            image = (image - image.min()) / (image.max() - image.min())
+            image = image * 2 - 1
+        return image
+    
+    def window_transform(self, image: torch.Tensor) -> torch.Tensor:
+        """Apply window transform to CT image."""
+        window_min = self.window_level - self.window_width // 2
+        window_max = self.window_level + self.window_width // 2
+        return torch.clamp(image, window_min, window_max)
+    
 
+    def random_rotate(self, image: torch.Tensor, mask: Optional[torch.Tensor] = None
+        ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+            """Apply random rotation."""
+            if random.random() < self.augment_probability:
+                angle = random.uniform(-10, 10)
+                image = TF.rotate(image, angle, interpolation=TF.InterpolationMode.BILINEAR)
+                if mask is not None:
+                    mask = TF.rotate(mask, angle, interpolation=TF.InterpolationMode.NEAREST)
+            return image, mask
+    
+    def random_flip(self, image: torch.Tensor, mask: Optional[torch.Tensor] = None
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Apply random horizontal/vertical flips."""
+        if random.random() < self.augment_probability:
+            if random.random() < 0.5:
+                image = TF.hflip(image)
+                if mask is not None:
+                    mask = TF.hflip(mask)
+            if random.random() < 0.5:
+                image = TF.vflip(image)
+                if mask is not None:
+                    mask = TF.vflip(mask)
+        return image, mask
+    
+    def random_gamma(self, image: torch.Tensor) -> torch.Tensor:
+        """Apply random gamma correction."""
+        if random.random() < self.augment_probability:
+            gamma = random.uniform(0.8, 1.2)
+            image = TF.adjust_gamma(image, gamma)
+        return image
+
+    def random_noise(self, image: torch.Tensor) -> torch.Tensor:
+        """Add random Gaussian noise."""
+        if random.random() < self.augment_probability:
+            noise = torch.randn_like(image) * 0.01
+            image = image + noise
+        return image
+
+    def resize(self, image: torch.Tensor, mask: Optional[torch.Tensor] = None
+    ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Resize image and mask to output size."""
+        if image.shape[-2:] != self.output_size:
+            image = TF.resize(image, self.output_size, 
+                            interpolation=TF.InterpolationMode.BILINEAR)
+            if mask is not None:
+                mask = TF.resize(mask, self.output_size,
+                               interpolation=TF.InterpolationMode.NEAREST)
+        return image, mask
+    
     def normalize_intensity(self, image: torch.Tensor) -> torch.Tensor:
         """Normalize intensity values to [0, 1]."""
         min_val = image.min()
         max_val = image.max()
         return (image - min_val) / (max_val - min_val + 1e-8)
-
-    def random_rotate(self, image: torch.Tensor, mask: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Randomly rotate the image and mask."""
-        angle = random.uniform(-self.rotation_range, self.rotation_range)  # Random angle between [-rotation_range, rotation_range]
-        image_rotated = TF.rotate(image, angle)
-        mask_rotated = TF.rotate(mask, angle)
-        return image_rotated, mask_rotated
-
-    def add_noise(self, image: torch.Tensor) -> torch.Tensor:
-        """Add Gaussian noise to the image."""
-        noise = torch.randn_like(image) * self.noise_factor
-        noisy_image = image + noise
-        return torch.clip(noisy_image, 0, 1)  # Ensure values remain in the valid range [0, 1]
-
-
+        
     def __call__(self, sample: dict) -> dict:
         image = sample['image']
         mask = sample['mask']
 
-        # Intensity Clipping
-        image = self.clip_intensity(image)
 
-        # Normalize Intensity
-        if self.normalize:
-            image = self.normalize_intensity(image)
+        # First resize to target size
+        image, mask = self.resize(image, mask)
+        # window transform
+        image = self.window_transform(image)
 
-        # a bit of data transformation
-        # image = self.add_noise(image)
-        # random rotation
-        # image, mask = self.random_rotate(image, mask)
+        # Do Data Augmentation during training only
+        if self.train:
+            image = self.random_gamma(image)
+            image = self.random_noise(image)
+        
+        image = self.normalize_intensity(image)
+        image_pil = TF.to_pil_image(image.squeeze())
+        mask_pil = TF.to_pil_image(mask.to(torch.uint8).squeeze()) if mask is not None else None
 
-        # Data Augmentation
-        if self.augmentations:
-            # Combine image and mask for consistent augmentation
-            augmented = self.augmentations(image=image.numpy(), mask=mask.numpy())
-            image = torch.from_numpy(augmented['image'])
-            mask = torch.from_numpy(augmented['mask'])
+        if self.train:
+            image_pil, mask_pil = self.random_rotate(image_pil, mask_pil)
+            image_pil, mask_pil = self.random_flip(image_pil, mask_pil)
+        # # Normalize Intensity
+        # if self.normalize:
+        #     image = self.normalize_intensity(image)
+        
+        if self.processor:
+            # Process for SAM
+            inputs = self.processor(
+                images=TF.to_tensor(image_pil),
+                input_points=[[[450, 600]]] ,  # No prompt points for dense prediction
+                return_tensors="pt"
+            )
+            # Update sample, if processor is used, pixel_values is initialized and image is dropped
+            sample['pixel_values'] = inputs.pixel_values.squeeze()
+            del sample['image'] # free the image to save memory
+        else:
+            sample['image'] = TF.to_tensor(image_pil)
+            sample['mask'] = TF.to_tensor(mask_pil)
 
-        # Update sample
-        sample['image'] = image
-        sample['mask'] = mask
+            
+        # # Convert back to tensor for operations that work on tensors
+        # image = TF.to_tensor(image_pil)
+        # mask = TF.to_tensor(mask_pil) if mask_pil is not None else None
+    
+
         return sample
 
+
 if __name__ == "__main__":
+    import time 
+
+    start_time = time.time()
+
     dataset = LITSDataset(
-        images_dir="../dataset/nii",
-        masks_dir="../dataset/nii",
+        images_dir="dataset/nii",
+        masks_dir="dataset/nii",
         slice_axis=2,
         transform=LITSImageTransform(),
+        mapping_cache_path = "slice_mapping.pkl",
         test_size=0.2,
-        split="train")
+        )
+    print("dataset testing...")
+    print(f"{dataset=}\n{len(dataset)=}")
 
+    # Record the time after loading the dataset
+    dataset_load_time = time.time() - start_time
+
+    dataset.set_split("test") # using the test split    
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True)
+
 
     for sample in dataloader:
         print(sample.keys())
         break
-    print("dataset testing...")
-    print(f"{dataset=}")
+
     print("dataloader testing...")
     print(f"{dataloader=}")
+
+    # Record the time after loading the dataset
+    dataset_sample_time = time.time() - start_time - dataset_load_time
+    print(f"TIME TO  LOAD  DATASET =  {dataset_load_time:.4f}s")
+    print(f"TIME TO SAMPLE DATASET =  {dataset_sample_time:.4f}s")
+
+
+
+
